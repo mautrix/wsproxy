@@ -1,0 +1,7 @@
+FROM scratch
+
+COPY ./mautrix-wsproxy /usr/bin/mautrix-wsproxy
+
+ENV LISTEN_ADDRESS=:29311
+
+CMD ["/usr/bin/mautrix-wsproxy", "-config", "env"]

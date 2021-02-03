@@ -1,0 +1,5 @@
+listen_address: localhost:29331
+appservices:
+- id: imessage
+  as: put your as_token here
+  hs: put your hs_token here
