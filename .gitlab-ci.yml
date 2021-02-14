@@ -3,8 +3,9 @@ stages:
 - build docker
 - manifest
 
-.build: &build
+build:
   stage: build
+  image: golang:1-alpine
   cache:
     paths:
     - .cache
@@ -13,43 +14,35 @@ stages:
   - export GOPATH="$CI_PROJECT_DIR/.cache"
   - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
   script:
-  - go build -o mautrix-wsproxy
+  - GOARCH=amd64 go build -o mautrix-wsproxy-amd64
+  - GOARCH=arm64 go build -o mautrix-wsproxy-arm64
+  - GOARCH=arm go build -o mautrix-wsproxy-arm
   artifacts:
     paths:
-    - mautrix-wsproxy
+    - mautrix-wsproxy-amd64
+    - mautrix-wsproxy-arm64
+    - mautrix-wsproxy-arm
     - example-config.yaml
 
 .build-docker: &build-docker
   image: docker:stable
   stage: build docker
+  dependencies:
+  - build
+  needs:
+  - build
   before_script:
   - docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY
   script:
   - docker pull $CI_REGISTRY_IMAGE:latest || true
-  - docker build --pull --cache-from $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-$DOCKER_ARCH . --file Dockerfile.ci
+  - docker build --pull --cache-from $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-$DOCKER_ARCH . --file Dockerfile.ci --build-arg EXECUTABLE=./mautrix-wsproxy-$DOCKER_ARCH
   - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-$DOCKER_ARCH
   - docker rmi $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA-$DOCKER_ARCH
-
-build amd64:
-  <<: *build
-  image: dock.mau.dev/tulir/gomuks-build-docker:linux-amd64
-
-build arm64:
-  <<: *build
-  image: dock.mau.dev/tulir/gomuks-build-docker:linux-arm64
-
-build arm:
-  <<: *build
-  image: dock.mau.dev/tulir/gomuks-build-docker:linux-arm
 
 build docker amd64:
   <<: *build-docker
   tags:
   - amd64
-  dependencies:
-  - build amd64
-  needs:
-  - build amd64
   variables:
     DOCKER_ARCH: amd64
 
@@ -57,10 +50,6 @@ build docker arm64:
   <<: *build-docker
   tags:
   - arm64
-  dependencies:
-  - build arm64
-  needs:
-  - build arm64
   variables:
     DOCKER_ARCH: arm64
 
