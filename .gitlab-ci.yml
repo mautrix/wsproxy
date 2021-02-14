@@ -12,6 +12,7 @@ stages:
   - mkdir -p .cache
   - export GOPATH="$CI_PROJECT_DIR/.cache"
   - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
+  - export CGO_ENABLED=0
   script:
   - go build -o mautrix-wsproxy
   artifacts:
