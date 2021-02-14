@@ -2,7 +2,7 @@ FROM golang:1-alpine3.13 AS builder
 
 COPY . /build
 WORKDIR /build
-RUN go build -o /usr/bin/mautrix-wsproxy
+RUN CGO_ENABLED=0 go build -o /usr/bin/mautrix-wsproxy
 
 FROM scratch
 
