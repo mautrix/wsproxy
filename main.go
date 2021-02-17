@@ -78,6 +78,7 @@ func putTransaction(w http.ResponseWriter, r *http.Request) {
 	} else {
 		token = authHeader[len("Bearer "):]
 	}
+	w.Header().Add("Content-Type", "application/json")
 	if len(token) == 0 {
 		w.WriteHeader(http.StatusForbidden)
 		_ = json.NewEncoder(w).Encode(map[string]string{
@@ -98,7 +99,7 @@ func putTransaction(w http.ResponseWriter, r *http.Request) {
 	var txn AppserviceTransaction
 	err := json.NewDecoder(r.Body).Decode(&txn)
 	if err != nil {
-		w.WriteHeader(http.StatusBadGateway)
+		w.WriteHeader(http.StatusBadRequest)
 		_ = json.NewEncoder(w).Encode(map[string]string{
 			"errcode": "M_BAD_JSON",
 			"error":   "Failed to decode request JSON",
@@ -131,6 +132,7 @@ func putTransaction(w http.ResponseWriter, r *http.Request) {
 		} else {
 			log.Printf("Sent transaction %s to %s containing %d events and %d ephemeral events",
 				txnID, az.ID, len(msg.Events), len(msg.Ephemeral))
+			_, _ = w.Write([]byte("{}\n"))
 		}
 	} else {
 		log.Printf("Rejecting transaction %s to %s: websocket not connected", txnID, az.ID)
