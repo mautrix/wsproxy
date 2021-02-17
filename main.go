@@ -131,6 +131,7 @@ func putTransaction(w http.ResponseWriter, r *http.Request) {
 		} else {
 			log.Printf("Sent transaction %s to %s containing %d events and %d ephemeral events",
 				txnID, az.ID, len(msg.Events), len(msg.Ephemeral))
+			_ = json.NewEncoder(w).Encode("")
 		}
 	} else {
 		log.Printf("Rejecting transaction %s to %s: websocket not connected", txnID, az.ID)
