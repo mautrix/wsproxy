@@ -234,6 +234,8 @@ func main() {
 			log.Fatalln("Failed to read config:", err)
 		} else if len(cfg.AppServices) == 0 {
 			log.Fatalln("No appservices configured")
+		} else if len(cfg.ListenAddress) == 0 {
+			log.Fatalln("Listen address not configured")
 		}
 		appservices := "appservices"
 		if len(cfg.AppServices) == 1 {
