@@ -214,6 +214,16 @@ func main() {
 			AS: os.Getenv("AS_TOKEN"),
 			HS: os.Getenv("HS_TOKEN"),
 		}}
+		if len(cfg.ListenAddress) == 0 {
+			log.Fatalln("LISTEN_ADDRESS environment variable is not set")
+		} else if len(cfg.AppServices[0].ID) == 0 {
+			log.Fatalln("APPSERVICE_ID environment variable is not set")
+		} else if len(cfg.AppServices[0].AS) == 0 {
+			log.Fatalln("AS_TOKEN environment variable is not set")
+		} else if len(cfg.AppServices[0].HS) == 0 {
+			log.Fatalln("HS_TOKEN environment variable is not set")
+		}
+		log.Printf("Found one appservice from environment variables")
 	} else {
 		file, err := os.Open(*configPath)
 		if err != nil {
@@ -222,11 +232,25 @@ func main() {
 		err = yaml.NewDecoder(file).Decode(&cfg)
 		if err != nil {
 			log.Fatalln("Failed to read config:", err)
+		} else if len(cfg.AppServices) == 0 {
+			log.Fatalln("No appservices configured")
 		}
+		appservices := "appservices"
+		if len(cfg.AppServices) == 1 {
+			appservices = "appservice"
+		}
+		log.Println("Found", len(cfg.AppServices), appservices, "in", *configPath)
 	}
 	cfg.byHSToken = make(map[string]*AppService)
 	cfg.byASToken = make(map[string]*AppService)
-	for _, az := range cfg.AppServices {
+	for i, az := range cfg.AppServices {
+		if len(az.ID) == 0 {
+			log.Fatalf("Appservice #%d doesn't have an ID", i+1)
+		} else if len(az.AS) == 0 {
+			log.Fatalf("Appservice %s doesn't have the AS token set", az.ID)
+		} else if len(az.AS) == 0 {
+			log.Fatalf("Appservice %s doesn't have the HS token set", az.ID)
+		}
 		cfg.byASToken[az.AS] = az
 		cfg.byHSToken[az.HS] = az
 	}
