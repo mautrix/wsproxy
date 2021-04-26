@@ -68,6 +68,8 @@ type WebSocketMessage struct {
 	Ephemeral []json.RawMessage `json:"ephemeral,omitempty"`
 }
 
+const CloseConnReplaced = 4001
+
 var cfg Config
 
 func putTransaction(w http.ResponseWriter, r *http.Request) {
@@ -187,7 +189,7 @@ func syncWebsocket(w http.ResponseWriter, r *http.Request) {
 	az.connLock.Lock()
 	if az.conn != nil {
 		go func(oldConn *websocket.Conn) {
-			msg := websocket.FormatCloseMessage(websocket.CloseNormalClosure,`{"status": "conn_replaced"}`)
+			msg := websocket.FormatCloseMessage(CloseConnReplaced, `{"command": "disconnect", "status": "conn_replaced"}`)
 			_ = oldConn.WriteControl(websocket.CloseMessage, msg, time.Now().Add(3 * time.Second))
 			_ = oldConn.Close()
 		}(az.conn)
@@ -281,7 +283,7 @@ func main() {
 			if oldConn == nil {
 				return
 			}
-			msg := websocket.FormatCloseMessage(websocket.CloseGoingAway,`{"status": "server_shutting_down"}`)
+			msg := websocket.FormatCloseMessage(websocket.CloseGoingAway,`{"command": "disconnect", "status": "server_shutting_down"}`)
 			_ = oldConn.WriteControl(websocket.CloseMessage, msg, time.Now().Add(3 * time.Second))
 			_ = oldConn.Close()
 		}(az.conn)
