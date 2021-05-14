@@ -32,9 +32,9 @@ services:
     image: dock.mau.dev/tulir/mautrix-wsproxy
     restart: unless-stopped
     ports:
-      - 29331
+      - 29311
     environment:
-      #LISTEN_ADDRESS: ":29331"
+      #LISTEN_ADDRESS: ":29311"
       APPSERVICE_ID: imessage
       AS_TOKEN: put your as_token here
       HS_TOKEN: put your hs_token here
@@ -55,9 +55,9 @@ services:
     volumes:
     - ./config:/data
     ports:
-    - 29331
+    - 29311
     environment:
-      #LISTEN_ADDRESS: ":29331"
+      #LISTEN_ADDRESS: ":29311"
       APPSERVICE_ID: imessage
       AS_TOKEN: put your as_token here
       HS_TOKEN: put your hs_token here
