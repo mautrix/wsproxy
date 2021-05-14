@@ -3,6 +3,6 @@ FROM scratch
 ARG EXECUTABLE=./mautrix-wsproxy
 COPY $EXECUTABLE /usr/bin/mautrix-wsproxy
 
-ENV LISTEN_ADDRESS=:29311
+ENV LISTEN_ADDRESS=:29331
 
 CMD ["/usr/bin/mautrix-wsproxy", "-config", "env"]

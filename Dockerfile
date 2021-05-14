@@ -8,6 +8,6 @@ FROM scratch
 
 COPY --from=builder /usr/bin/mautrix-wsproxy /usr/bin/mautrix-wsproxy
 
-ENV LISTEN_ADDRESS=:29311
+ENV LISTEN_ADDRESS=:29331
 
 CMD ["/usr/bin/mautrix-wsproxy", "-config", "env"]
