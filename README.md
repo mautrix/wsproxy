@@ -29,6 +29,11 @@ After you have the executable ready, configure and run mautrix-wsproxy:
 [GitHub releases]: https://github.com/tulir/mautrix-wsproxy/releases
 
 ## Sample docker-compose file
+The compose files here also include [mautrix-syncproxy]. It's mostly needed for
+the Android SMS bridge. You can omit it if you're not planning on using that.
+
+[mautrix-syncproxy]: https://github.com/tulir/mautrix-syncproxy
+
 ```yaml
 version: "3.7"
 
@@ -44,6 +49,19 @@ services:
       APPSERVICE_ID: imessage
       AS_TOKEN: put your as_token here
       HS_TOKEN: put your hs_token here
+      # This URL will work as-is with docker networking
+      SYNC_PROXY_URL: http://mautrix-syncproxy:29332
+      SYNC_PROXY_SHARED_SECRET: random string here
+
+  mautrix-syncproxy:
+    container_name: mautrix-syncproxy
+    image: dock.mau.dev/tulir/mautrix-syncproxy
+    restart: unless-stopped
+    environment:
+      #LISTEN_ADDRESS: ":29332"
+      DATABASE_URL: postgres://user:pass@host/mautrixsyncproxy
+      HOMESERVER_URL: http://localhost:8008
+      SHARED_SECRET: same random string as above here
 ```
 
 ### Docker with multiple appservices
@@ -65,7 +83,14 @@ services:
     - 29331
     environment:
       #LISTEN_ADDRESS: ":29331"
-      APPSERVICE_ID: imessage
-      AS_TOKEN: put your as_token here
-      HS_TOKEN: put your hs_token here
+
+  mautrix-syncproxy:
+    container_name: mautrix-syncproxy
+    image: dock.mau.dev/tulir/mautrix-syncproxy
+    restart: unless-stopped
+    environment:
+      #LISTEN_ADDRESS: ":29332"
+      DATABASE_URL: postgres://user:pass@host/mautrixsyncproxy
+      HOMESERVER_URL: http://localhost:8008
+      SHARED_SECRET: random string here
 ```
