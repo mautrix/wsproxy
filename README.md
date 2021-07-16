@@ -6,21 +6,27 @@ to receive appservice transactions without opening a port to the local Mac
 where the bridge runs.
 
 ## Setup
-You can download a prebuilt executable from [the CI](https://mau.dev/tulir/mautrix-wsproxy/-/pipelines)
-or [GitHub releases](https://github.com/tulir/mautrix-wsproxy/releases). The executables are statically
-compiled and have no dependencies. Alternatively, you can build from source:
+You can download a prebuilt executable from [the CI] or [GitHub releases]. The
+executables are statically compiled and have no dependencies. Alternatively,
+you can build from source:
 
 0. Have [Go](https://golang.org/) 1.13 or higher installed.
 1. Clone the repository (`git clone https://github.com/tulir/mautrix-wsproxy.git`).
-2. Build with `go build`. The resulting executable will be in the current directory named `mautrix-wsproxy`.
+2. Build with `go build`. The resulting executable will be in the current
+   directory named `mautrix-wsproxy`.
 
 After you have the executable ready, configure and run mautrix-wsproxy:
 
-1. Copy `example-config.yaml` from the root of the repo to `config.yaml` and fill out the fields.
-2. Change the appservice registration file to point your homeserver at mautrix-wsproxy.
-   Restart homeserver after registration changes.
-3. Change the bridge config (`homeserver` -> `websocket_proxy`) to point at mautrix-wsproxy.
+1. Copy `example-config.yaml` from the root of the repo to `config.yaml`
+   and fill out the fields.
+2. Change the appservice registration file to point your homeserver at
+   mautrix-wsproxy. Restart homeserver after registration changes.
+3. Change the bridge config (`homeserver` -> `websocket_proxy`)
+   to point at mautrix-wsproxy.
 4. Run the proxy with `mautrix-wsproxy` and start the bridge.
+
+[the CI]: https://mau.dev/tulir/mautrix-wsproxy/-/pipelines
+[GitHub releases]: https://github.com/tulir/mautrix-wsproxy/releases
 
 ## Sample docker-compose file
 ```yaml
@@ -41,7 +47,8 @@ services:
 ```
 
 ### Docker with multiple appservices
-The environment variables only support one appservice at a time, so you'll need to use a config file if you want more:
+The environment variables only support one appservice at a time, so you'll need
+to use a config file if you want more:
 
 ```yaml
 version: "3.7"

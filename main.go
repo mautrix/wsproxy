@@ -32,6 +32,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/gorilla/websocket"
 	"gopkg.in/yaml.v2"
+
+	"maunium.net/go/mautrix/appservice"
 )
 
 type AppService struct {
@@ -55,22 +57,37 @@ type Config struct {
 	byHSToken map[string]*AppService `yaml:"-"`
 }
 
-type AppserviceTransaction struct {
-	Events        []json.RawMessage `json:"events"`
-	Ephemeral     []json.RawMessage `json:"ephemeral"`
-	SoruEphemeral []json.RawMessage `json:"de.sorunome.msc2409.ephemeral"`
-}
-
-type WebSocketMessage struct {
-	Status    string            `json:"status"`
-	TxnID     string            `json:"txn_id,omitempty"`
-	Events    []json.RawMessage `json:"events,omitempty"`
-	Ephemeral []json.RawMessage `json:"ephemeral,omitempty"`
-}
-
 const CloseConnReplaced = 4001
 
 var cfg Config
+
+var (
+	errMissingToken = appservice.Error{
+		HTTPStatus: http.StatusForbidden,
+		ErrorCode:  "M_MISSING_TOKEN",
+		Message:    "Missing authorization header",
+	}
+	errUnknownToken = appservice.Error{
+		HTTPStatus: http.StatusForbidden,
+		ErrorCode:  "M_UNKNOWN_TOKEN",
+		Message:    "Unknown authorization token",
+	}
+	errBadJSON = appservice.Error{
+		HTTPStatus: http.StatusBadRequest,
+		ErrorCode:  "M_BAD_JSON",
+		Message:    "Failed to decode request JSON",
+	}
+	errSendFail = appservice.Error{
+		HTTPStatus: http.StatusBadGateway,
+		ErrorCode:  "FI.MAU.WS_SEND_FAIL",
+		Message:    "Failed to send data through websocket",
+	}
+	errNotConnected = appservice.Error{
+		HTTPStatus: http.StatusBadGateway,
+		ErrorCode:  "FI.MAU.WS_NOT_CONNECTED",
+		Message:    "Endpoint is not connected to websocket",
+	}
+)
 
 func putTransaction(w http.ResponseWriter, r *http.Request) {
 	var token string
@@ -82,67 +99,49 @@ func putTransaction(w http.ResponseWriter, r *http.Request) {
 	}
 	w.Header().Add("Content-Type", "application/json")
 	if len(token) == 0 {
-		w.WriteHeader(http.StatusForbidden)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"errcode": "M_MISSING_TOKEN",
-			"error":   "Missing authorization header",
-		})
+		errMissingToken.Write(w)
 		return
 	}
 	az, ok := cfg.byHSToken[token]
 	if !ok {
-		w.WriteHeader(http.StatusForbidden)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"errcode": "M_UNKNOWN_TOKEN",
-			"error":   "Unknown authorization token",
-		})
+		errUnknownToken.Write(w)
 		return
 	}
-	var txn AppserviceTransaction
+	var txn appservice.Transaction
 	err := json.NewDecoder(r.Body).Decode(&txn)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"errcode": "M_BAD_JSON",
-			"error":   "Failed to decode request JSON",
-		})
+		errBadJSON.Write(w)
+		return
+	}
+	if txn.EphemeralEvents == nil && txn.MSC2409EphemeralEvents != nil {
+		txn.EphemeralEvents = txn.MSC2409EphemeralEvents
+	}
+	if txn.DeviceLists == nil && txn.MSC3202DeviceLists != nil {
+		txn.DeviceLists = txn.MSC3202DeviceLists
+	}
+	if txn.DeviceOTKCount == nil && txn.MSC3202DeviceOTKCount != nil {
+		txn.DeviceOTKCount = txn.MSC3202DeviceOTKCount
 	}
 	vars := mux.Vars(r)
 	txnID := vars["txnID"]
 	conn := az.Conn()
 	if conn != nil {
-		msg := WebSocketMessage{
-			Status:    "ok",
-			TxnID:     txnID,
-			Events:    txn.Events,
-		}
-		if txn.Ephemeral != nil {
-			msg.Ephemeral = txn.SoruEphemeral
-		} else if txn.SoruEphemeral != nil {
-			msg.Ephemeral = txn.SoruEphemeral
-		} else {
-			msg.Ephemeral = []json.RawMessage{}
-		}
-		err = conn.WriteJSON(msg)
+		err = conn.WriteJSON(appservice.WebsocketTransaction{
+			Status:      "ok",
+			TxnID:       txnID,
+			Transaction: txn,
+		})
 		if err != nil {
 			log.Printf("Rejecting transaction %s to %s: %v", txnID, az.ID, err)
-			w.WriteHeader(http.StatusBadGateway)
-			_ = json.NewEncoder(w).Encode(map[string]string{
-				"errcode": "FI.MAU.WS_SEND_FAIL",
-				"error":   "Failed to send data through websocket",
-			})
+			errSendFail.Write(w)
 		} else {
 			log.Printf("Sent transaction %s to %s containing %d events and %d ephemeral events",
-				txnID, az.ID, len(msg.Events), len(msg.Ephemeral))
-			_, _ = w.Write([]byte("{}\n"))
+				txnID, az.ID, len(txn.Events), len(txn.EphemeralEvents))
+			appservice.WriteBlankOK(w)
 		}
 	} else {
 		log.Printf("Rejecting transaction %s to %s: websocket not connected", txnID, az.ID)
-		w.WriteHeader(http.StatusBadGateway)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"errcode": "FI.MAU.WS_NOT_CONNECTED",
-			"error":   "Endpoint is not connected to websocket",
-		})
+		errNotConnected.Write(w)
 	}
 }
 
@@ -151,20 +150,12 @@ var upgrader = websocket.Upgrader{}
 func syncWebsocket(w http.ResponseWriter, r *http.Request) {
 	authHeader := r.Header.Get("Authorization")
 	if !strings.HasPrefix(authHeader, "Bearer ") {
-		w.WriteHeader(http.StatusForbidden)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"errcode": "M_MISSING_TOKEN",
-			"error":   "Missing authorization header",
-		})
+		errMissingToken.Write(w)
 		return
 	}
 	az, ok := cfg.byASToken[authHeader[len("Bearer "):]]
 	if !ok {
-		w.WriteHeader(http.StatusForbidden)
-		_ = json.NewEncoder(w).Encode(map[string]string{
-			"errcode": "M_UNKNOWN_TOKEN",
-			"error":   "Unknown authorization token",
-		})
+		errUnknownToken.Write(w)
 		return
 	}
 	ws, err := upgrader.Upgrade(w, r, nil)
@@ -182,7 +173,7 @@ func syncWebsocket(w http.ResponseWriter, r *http.Request) {
 		az.connLock.Unlock()
 		_ = ws.Close()
 	}()
-	err = ws.WriteJSON(WebSocketMessage{Status: "connected"})
+	err = ws.WriteMessage(websocket.TextMessage, []byte(`{"status": "connected"}`))
 	if err != nil {
 		log.Printf("Failed to write welcome status message to %s: %v", az.ID, err)
 	}
@@ -190,14 +181,14 @@ func syncWebsocket(w http.ResponseWriter, r *http.Request) {
 	if az.conn != nil {
 		go func(oldConn *websocket.Conn) {
 			msg := websocket.FormatCloseMessage(CloseConnReplaced, `{"command": "disconnect", "status": "conn_replaced"}`)
-			_ = oldConn.WriteControl(websocket.CloseMessage, msg, time.Now().Add(3 * time.Second))
+			_ = oldConn.WriteControl(websocket.CloseMessage, msg, time.Now().Add(3*time.Second))
 			_ = oldConn.Close()
 		}(az.conn)
 	}
 	az.conn = ws
 	az.connLock.Unlock()
 	for {
-		_, _, err := ws.ReadMessage()
+		_, _, err = ws.ReadMessage()
 		if err != nil {
 			log.Println("Error reading from websocket:", err)
 			break
@@ -263,7 +254,7 @@ func main() {
 	router.HandleFunc("/_matrix/app/v1/transactions/{txnID}", putTransaction).Methods(http.MethodPut)
 	router.HandleFunc("/_matrix/client/unstable/fi.mau.as_sync", syncWebsocket).Methods(http.MethodGet)
 	server := &http.Server{
-		Addr: cfg.ListenAddress,
+		Addr:    cfg.ListenAddress,
 		Handler: router,
 	}
 	go func() {
@@ -283,8 +274,8 @@ func main() {
 			if oldConn == nil {
 				return
 			}
-			msg := websocket.FormatCloseMessage(websocket.CloseGoingAway,`{"command": "disconnect", "status": "server_shutting_down"}`)
-			_ = oldConn.WriteControl(websocket.CloseMessage, msg, time.Now().Add(3 * time.Second))
+			msg := websocket.FormatCloseMessage(websocket.CloseGoingAway, `{"command": "disconnect", "status": "server_shutting_down"}`)
+			_ = oldConn.WriteControl(websocket.CloseMessage, msg, time.Now().Add(3*time.Second))
 			_ = oldConn.Close()
 		}(az.conn)
 	}
