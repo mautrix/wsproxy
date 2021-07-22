@@ -53,6 +53,11 @@ type Config struct {
 	ListenAddress string        `yaml:"listen_address"`
 	AppServices   []*AppService `yaml:"appservices"`
 
+	SyncProxy struct {
+		URL          string `yaml:"url"`
+		SharedSecret string `yaml:"shared_secret"`
+	} `yaml:"sync_proxy"`
+
 	byASToken map[string]*AppService `yaml:"-"`
 	byHSToken map[string]*AppService `yaml:"-"`
 }
@@ -207,6 +212,8 @@ func main() {
 			AS: os.Getenv("AS_TOKEN"),
 			HS: os.Getenv("HS_TOKEN"),
 		}}
+		cfg.SyncProxy.URL = os.Getenv("SYNC_PROXY_URL")
+		cfg.SyncProxy.SharedSecret = os.Getenv("SYNC_PROXY_SHARED_SECRET")
 		if len(cfg.ListenAddress) == 0 {
 			log.Fatalln("LISTEN_ADDRESS environment variable is not set")
 		} else if len(cfg.AppServices[0].ID) == 0 {
