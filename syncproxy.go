@@ -79,6 +79,8 @@ func makeSyncProxyRequest(method, appserviceID string, data interface{}) error {
 		return err
 	} else if req, err = http.NewRequest(method, spURL, buf); err != nil {
 		return fmt.Errorf("failed to prepare sync proxy %s request: %w", method, err)
+	} else if req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", cfg.SyncProxy.SharedSecret)); len(cfg.SyncProxy.SharedSecret) == 0 {
+		return fmt.Errorf("sync proxy shared secret not configured")
 	} else if resp, err = syncProxyClient.Do(req); err != nil {
 		return fmt.Errorf("failed to make sync proxy %s request: %w", method, err)
 	} else if resp.StatusCode >= 200 && resp.StatusCode < 300 {
