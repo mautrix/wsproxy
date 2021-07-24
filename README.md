@@ -49,8 +49,9 @@ services:
       APPSERVICE_ID: imessage
       AS_TOKEN: put your as_token here
       HS_TOKEN: put your hs_token here
-      # This URL will work as-is with docker networking
+      # These URLs will work as-is with docker networking
       SYNC_PROXY_URL: http://mautrix-syncproxy:29332
+      SYNC_PROXY_WSPROXY_URL: http://mautrix-wsproxy:29331
       SYNC_PROXY_SHARED_SECRET: random string here
 
   mautrix-syncproxy:
