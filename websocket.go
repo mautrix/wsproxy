@@ -34,8 +34,9 @@ type AppService struct {
 	AS string `yaml:"as"`
 	HS string `yaml:"hs"`
 
-	conn     *websocket.Conn `yaml:"-"`
-	connLock sync.Mutex      `yaml:"-"`
+	conn      *websocket.Conn `yaml:"-"`
+	connLock  sync.Mutex      `yaml:"-"`
+	writeLock sync.Mutex      `yaml:"-"`
 }
 
 func (az *AppService) Conn() *websocket.Conn {
@@ -121,8 +122,10 @@ func handleCommand(az *AppService, ws *websocket.Conn, msg *appservice.Websocket
 				"message": err.Error(),
 			}
 		}
+		az.writeLock.Lock()
 		log.Printf("Sending response %+v", respPayload)
 		err = ws.WriteJSON(&respPayload)
+		az.writeLock.Unlock()
 		if err != nil {
 			log.Printf("Failed to send response to req #%d: %v", msg.ReqID, err)
 		}

@@ -91,17 +91,24 @@ func putTransaction(w http.ResponseWriter, r *http.Request) {
 	txnID := vars["txnID"]
 	conn := az.Conn()
 	if conn != nil {
-		err = conn.WriteJSON(appservice.WebsocketTransaction{
+		deviceListChanges := 0
+		if txn.DeviceLists != nil {
+			deviceListChanges = len(txn.DeviceLists.Changed)
+		}
+		az.writeLock.Lock()
+		log.Printf("Sending transaction %s to %s containing %d events, %d ephemeral events, %d OTK counts and %d device list changes",
+			txnID, az.ID, len(txn.Events), len(txn.EphemeralEvents), len(txn.DeviceOTKCount), deviceListChanges)
+		err = conn.WriteJSON(&appservice.WebsocketTransaction{
 			Status:      "ok",
 			TxnID:       txnID,
 			Transaction: txn,
 		})
+		az.writeLock.Unlock()
 		if err != nil {
 			log.Printf("Rejecting transaction %s to %s: %v", txnID, az.ID, err)
 			errSendFail.Write(w)
 		} else {
-			log.Printf("Sent transaction %s to %s containing %d events and %d ephemeral events",
-				txnID, az.ID, len(txn.Events), len(txn.EphemeralEvents))
+			log.Printf("Sent transaction %s to %s successfully", txnID, az.ID)
 			appservice.WriteBlankOK(w)
 		}
 	} else {
