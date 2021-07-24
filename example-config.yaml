@@ -3,3 +3,9 @@ appservices:
 - id: imessage
   as: put your as_token here
   hs: put your hs_token here
+sync_proxy:
+  # The URL that mautrix-wsproxy can use to reach mautrix-syncproxy
+  url: http://localhost:29332
+  # The URL that mautrix-syncproxy can use to reach mautrix-wsproxy
+  wsproxy_url: http://localhost:29331
+  shared_secret: null
