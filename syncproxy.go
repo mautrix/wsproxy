@@ -108,7 +108,7 @@ func (az *AppService) startSyncProxy(rawReq json.RawMessage) error {
 		DeviceID:       wsReq.DeviceID,
 		HSToken:        az.HS,
 		Address:        cfg.SyncProxy.OwnURL,
-		IsProxy:        true,
+		IsProxy:        false,
 	})
 }
 
