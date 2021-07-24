@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"time"
 
@@ -52,7 +53,7 @@ type SPStartSyncRequest struct {
 const maxBodySize = 1024 * 1024
 
 func makeSyncProxyRequest(method, appserviceID string, data interface{}) error {
-	var buf *bytes.Buffer
+	var buf io.ReadWriter
 
 	if data != nil {
 		buf = &bytes.Buffer{}
@@ -96,6 +97,7 @@ func makeSyncProxyRequest(method, appserviceID string, data interface{}) error {
 func (az *AppService) startSyncProxy(rawReq json.RawMessage) error {
 	var wsReq WSStartSyncRequest
 	err := json.Unmarshal(rawReq, &wsReq)
+	log.Println("Starting sync proxy for", az.ID, "/", wsReq.UserID, "/", wsReq.DeviceID)
 	if err != nil {
 		return fmt.Errorf("failed to parse request JSON: %w", err)
 	}

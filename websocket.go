@@ -119,6 +119,7 @@ func syncWebsocket(w http.ResponseWriter, r *http.Request) {
 					"message": err.Error(),
 				}
 			}
+			log.Printf("Sending response %+v", respPayload)
 			err = ws.WriteJSON(&respPayload)
 			if err != nil {
 				log.Printf("Failed to send response to req #%d: %v", msg.ReqID, err)
