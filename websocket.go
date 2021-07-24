@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -96,34 +97,57 @@ func syncWebsocket(w http.ResponseWriter, r *http.Request) {
 			log.Println("Error reading from websocket:", err)
 			break
 		}
-		var resp interface{}
-		switch msg.Command {
-		case "start_sync":
-			err = az.startSyncProxy(msg.Data)
-			if err != nil {
-				log.Println("Error forwarding", az.ID, "sync proxy start request:", err)
-			}
-		default:
-			log.Printf("Unknown command %s in request #%d from websocket. Data: %s", msg.Command, msg.ReqID, msg.Data)
-			err = fmt.Errorf("unknown command %s", msg.Command)
+		go handleCommand(az, ws, &msg)
+	}
+}
+
+func handleCommand(az *AppService, ws *websocket.Conn, msg *appservice.WebsocketCommand) {
+	defer func() {
+		panicErr := recover()
+		if panicErr != nil {
+			log.Printf("Panic while responding to command %s in request #%d: %v\n%s", msg.Command, msg.ReqID, panicErr, debug.Stack())
 		}
-		if msg.ReqID != 0 {
-			respPayload := appservice.WebsocketRequest{
-				ReqID:   msg.ReqID,
-				Command: "response",
-				Data:    resp,
+	}()
+	resp, err := actuallyHandleCommand(az, msg)
+	if msg.ReqID != 0 {
+		respPayload := appservice.WebsocketRequest{
+			ReqID:   msg.ReqID,
+			Command: "response",
+			Data:    resp,
+		}
+		if err != nil {
+			respPayload.Command = "error"
+			respPayload.Data = map[string]interface{}{
+				"message": err.Error(),
 			}
-			if err != nil {
-				respPayload.Command = "error"
-				respPayload.Data = map[string]interface{}{
-					"message": err.Error(),
-				}
-			}
-			log.Printf("Sending response %+v", respPayload)
-			err = ws.WriteJSON(&respPayload)
-			if err != nil {
-				log.Printf("Failed to send response to req #%d: %v", msg.ReqID, err)
-			}
+		}
+		log.Printf("Sending response %+v", respPayload)
+		err = ws.WriteJSON(&respPayload)
+		if err != nil {
+			log.Printf("Failed to send response to req #%d: %v", msg.ReqID, err)
 		}
 	}
+}
+
+func actuallyHandleCommand(az *AppService, msg *appservice.WebsocketCommand) (resp interface{}, err error) {
+	defer func() {
+		panicErr := recover()
+		if panicErr != nil {
+			log.Printf("Panic while handling command %s in request #%d: %v\n%s", msg.Command, msg.ReqID, panicErr, debug.Stack())
+			if err == nil {
+				err = fmt.Errorf("internal server error")
+			}
+		}
+	}()
+	switch msg.Command {
+	case "start_sync":
+		err = az.startSyncProxy(msg.Data)
+		if err != nil {
+			log.Println("Error forwarding", az.ID, "sync proxy start request:", err)
+		}
+	default:
+		log.Printf("Unknown command %s in request #%d from websocket. Data: %s", msg.Command, msg.ReqID, msg.Data)
+		err = fmt.Errorf("unknown command %s", msg.Command)
+	}
+	return
 }
