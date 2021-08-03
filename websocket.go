@@ -17,6 +17,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -132,6 +133,10 @@ func handleCommand(az *AppService, ws *websocket.Conn, msg *appservice.Websocket
 	}
 }
 
+type PingData struct {
+	Timestamp int64 `json:"timestamp"`
+}
+
 func actuallyHandleCommand(az *AppService, msg *appservice.WebsocketCommand) (resp interface{}, err error) {
 	defer func() {
 		panicErr := recover()
@@ -148,6 +153,17 @@ func actuallyHandleCommand(az *AppService, msg *appservice.WebsocketCommand) (re
 		if err != nil {
 			log.Println("Error forwarding", az.ID, "sync proxy start request:", err)
 		}
+	case "ping":
+		var req PingData
+		jsonErr := json.Unmarshal(msg.Data, &req)
+		now := time.Now()
+		if req.Timestamp > 0 {
+			pingStart := time.Unix(0, req.Timestamp * int64(time.Millisecond))
+			log.Printf("Received ping from %s in %s", az.ID, now.Sub(pingStart))
+		} else {
+			log.Printf("Received ping from %s with no timestamp (json error: %v)", az.ID, jsonErr)
+		}
+		resp = &PingData{now.UnixNano() / int64(time.Millisecond)}
 	default:
 		log.Printf("Unknown command %s in request #%d from websocket. Data: %s", msg.Command, msg.ReqID, msg.Data)
 		err = fmt.Errorf("unknown command %s", msg.Command)
