@@ -1,7 +1,7 @@
 # mautrix-wsproxy
 A simple HTTP push -> websocket proxy for Matrix appservices.
 
-This is used by [mautrix-imessage](https://github.com/tulir/mautrix-imessage)
+This is used by [mautrix-imessage](https://github.com/mautrix/imessage)
 to receive appservice transactions without opening a port to the local Mac
 where the bridge runs.
 
@@ -11,9 +11,9 @@ executables are statically compiled and have no dependencies. Alternatively,
 you can build from source:
 
 0. Have [Go](https://golang.org/) 1.13 or higher installed.
-1. Clone the repository (`git clone https://github.com/tulir/mautrix-wsproxy.git`).
-2. Build with `go build`. The resulting executable will be in the current
-   directory named `mautrix-wsproxy`.
+1. Clone the repository (`git clone https://github.com/mautrix/wsproxy.git`).
+2. Build with `go build -o mautrix-wsproxy`. The resulting executable will be
+   in the current directory named `mautrix-wsproxy`.
 
 After you have the executable ready, configure and run mautrix-wsproxy:
 
@@ -25,14 +25,14 @@ After you have the executable ready, configure and run mautrix-wsproxy:
    to point at mautrix-wsproxy.
 4. Run the proxy with `mautrix-wsproxy` and start the bridge.
 
-[the CI]: https://mau.dev/tulir/mautrix-wsproxy/-/pipelines
-[GitHub releases]: https://github.com/tulir/mautrix-wsproxy/releases
+[the CI]: https://mau.dev/mautrix/wsproxy/-/pipelines
+[GitHub releases]: https://github.com/mautrix/wsproxy/releases
 
 ## Sample docker-compose file
 The compose files here also include [mautrix-syncproxy]. It's mostly needed for
 the Android SMS bridge. You can omit it if you're not planning on using that.
 
-[mautrix-syncproxy]: https://github.com/tulir/mautrix-syncproxy
+[mautrix-syncproxy]: https://github.com/mautrix/syncproxy
 
 ```yaml
 version: "3.7"
@@ -40,7 +40,7 @@ version: "3.7"
 services:
   mautrix-wsproxy:
     container_name: mautrix-wsproxy
-    image: dock.mau.dev/tulir/mautrix-wsproxy
+    image: dock.mau.dev/mautrix/wsproxy
     restart: unless-stopped
     ports:
       - 29331
@@ -56,7 +56,7 @@ services:
 
   mautrix-syncproxy:
     container_name: mautrix-syncproxy
-    image: dock.mau.dev/tulir/mautrix-syncproxy
+    image: dock.mau.dev/mautrix/syncproxy
     restart: unless-stopped
     environment:
       #LISTEN_ADDRESS: ":29332"
@@ -75,7 +75,7 @@ version: "3.7"
 services:
   mautrix-wsproxy:
     container_name: mautrix-wsproxy
-    image: dock.mau.dev/tulir/mautrix-wsproxy
+    image: dock.mau.dev/mautrix/wsproxy
     restart: unless-stopped
     command: /usr/bin/mautrix-wsproxy -config /data/config.yaml
     volumes:
@@ -87,7 +87,7 @@ services:
 
   mautrix-syncproxy:
     container_name: mautrix-syncproxy
-    image: dock.mau.dev/tulir/mautrix-syncproxy
+    image: dock.mau.dev/mautrix/syncproxy
     restart: unless-stopped
     environment:
       #LISTEN_ADDRESS: ":29332"
