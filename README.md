@@ -3,7 +3,9 @@ A simple HTTP push -> websocket proxy for Matrix appservices.
 
 This is used by [mautrix-imessage](https://github.com/mautrix/imessage)
 to receive appservice transactions without opening a port to the local Mac
-where the bridge runs.
+where the bridge runs. In general, you should run wsproxy in the same place as
+your homeserver and use your existing reverse proxy to secure the websocket
+connection between the bridge and wsproxy.
 
 ## Setup
 You can download a prebuilt executable from [the CI] or [GitHub releases]. The
@@ -18,11 +20,13 @@ you can build from source:
 After you have the executable ready, configure and run mautrix-wsproxy:
 
 1. Copy `example-config.yaml` from the root of the repo to `config.yaml`
-   and fill out the fields.
+   and fill out the fields (with the tokens from the registration file).
 2. Change the appservice registration file to point your homeserver at
-   mautrix-wsproxy. Restart homeserver after registration changes.
+   mautrix-wsproxy. The registration's `url` field should have a `http://`
+   address that your homeserver can use to reach mautrix-wsproxy. Restart
+   homeserver after registration changes.
 3. Change the bridge config (`homeserver` -> `websocket_proxy`)
-   to point at mautrix-wsproxy.
+   to point at mautrix-wsproxy (the URL should have `ws://` or `wss://`).
 4. Run the proxy with `mautrix-wsproxy` and start the bridge.
 
 [the CI]: https://mau.dev/mautrix/wsproxy/-/pipelines
