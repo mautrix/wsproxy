@@ -12,7 +12,7 @@ You can download a prebuilt executable from [the CI] or [GitHub releases]. The
 executables are statically compiled and have no dependencies. Alternatively,
 you can build from source:
 
-0. Have [Go](https://golang.org/) 1.13 or higher installed.
+0. Have [Go](https://golang.org/) 1.16 or higher installed.
 1. Clone the repository (`git clone https://github.com/mautrix/wsproxy.git`).
 2. Build with `go build -o mautrix-wsproxy`. The resulting executable will be
    in the current directory named `mautrix-wsproxy`.
@@ -34,7 +34,8 @@ After you have the executable ready, configure and run mautrix-wsproxy:
 
 ## Sample docker-compose file
 The compose files here also include [mautrix-syncproxy]. It's mostly needed for
-the Android SMS bridge. You can omit it if you're not planning on using that.
+the Android SMS bridge (to save battery), but can be used with iMessage as well.
+You can omit it if you don't use the `bridge`→`encryption`→`appservice` option.
 
 [mautrix-syncproxy]: https://github.com/mautrix/syncproxy
 
