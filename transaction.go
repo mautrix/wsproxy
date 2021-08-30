@@ -18,6 +18,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -54,7 +55,7 @@ var (
 	}
 )
 
-func putTransaction(w http.ResponseWriter, r *http.Request) {
+func readTransaction(w http.ResponseWriter, r *http.Request, into interface{}) *AppService {
 	var token string
 	authHeader := r.Header.Get("Authorization")
 	if !strings.HasPrefix(authHeader, "Bearer ") {
@@ -65,17 +66,45 @@ func putTransaction(w http.ResponseWriter, r *http.Request) {
 	w.Header().Add("Content-Type", "application/json")
 	if len(token) == 0 {
 		errMissingToken.Write(w)
-		return
+		return nil
 	}
 	az, ok := cfg.byHSToken[token]
 	if !ok {
 		errUnknownToken.Write(w)
-		return
+		return nil
 	}
-	var txn appservice.Transaction
-	err := json.NewDecoder(r.Body).Decode(&txn)
+	err := json.NewDecoder(r.Body).Decode(into)
 	if err != nil {
 		errBadJSON.Write(w)
+		return nil
+	}
+	return az
+}
+
+func writeTransaction(w http.ResponseWriter, az *AppService, txnName, logContent string, payload interface{}) {
+	conn := az.Conn()
+	if conn != nil {
+		az.writeLock.Lock()
+		log.Printf("Sending %s to %s containing %s", txnName, az.ID, logContent)
+		err := conn.WriteJSON(payload)
+		az.writeLock.Unlock()
+		if err != nil {
+			log.Printf("Rejecting %s to %s: %v", txnName, az.ID, err)
+			errSendFail.Write(w)
+		} else {
+			log.Printf("Sent %s to %s successfully", txnName, az.ID)
+			appservice.WriteBlankOK(w)
+		}
+	} else {
+		log.Printf("Rejecting %s to %s: websocket not connected", txnName, az.ID)
+		errNotConnected.Write(w)
+	}
+}
+
+func putTransaction(w http.ResponseWriter, r *http.Request) {
+	var txn appservice.Transaction
+	az := readTransaction(w, r, &txn)
+	if az == nil {
 		return
 	}
 	if txn.EphemeralEvents == nil && txn.MSC2409EphemeralEvents != nil {
@@ -87,32 +116,42 @@ func putTransaction(w http.ResponseWriter, r *http.Request) {
 	if txn.DeviceOTKCount == nil && txn.MSC3202DeviceOTKCount != nil {
 		txn.DeviceOTKCount = txn.MSC3202DeviceOTKCount
 	}
+	deviceListChanges := 0
+	if txn.DeviceLists != nil {
+		deviceListChanges = len(txn.DeviceLists.Changed)
+	}
 	vars := mux.Vars(r)
 	txnID := vars["txnID"]
-	conn := az.Conn()
-	if conn != nil {
-		deviceListChanges := 0
-		if txn.DeviceLists != nil {
-			deviceListChanges = len(txn.DeviceLists.Changed)
-		}
-		az.writeLock.Lock()
-		log.Printf("Sending transaction %s to %s containing %d events, %d ephemeral events, %d OTK counts and %d device list changes",
-			txnID, az.ID, len(txn.Events), len(txn.EphemeralEvents), len(txn.DeviceOTKCount), deviceListChanges)
-		err = conn.WriteJSON(&appservice.WebsocketTransaction{
-			Status:      "ok",
-			TxnID:       txnID,
-			Transaction: txn,
-		})
-		az.writeLock.Unlock()
-		if err != nil {
-			log.Printf("Rejecting transaction %s to %s: %v", txnID, az.ID, err)
-			errSendFail.Write(w)
-		} else {
-			log.Printf("Sent transaction %s to %s successfully", txnID, az.ID)
-			appservice.WriteBlankOK(w)
-		}
-	} else {
-		log.Printf("Rejecting transaction %s to %s: websocket not connected", txnID, az.ID)
-		errNotConnected.Write(w)
+	logContent := fmt.Sprintf("%d events, %d ephemeral events, %d OTK counts and %d device list changes",
+		len(txn.Events), len(txn.EphemeralEvents), len(txn.DeviceOTKCount), deviceListChanges)
+	txnName := fmt.Sprintf("transaction %s", txnID)
+	writeTransaction(w, az, txnName, logContent, &appservice.WebsocketTransaction{
+		Status:      "ok",
+		TxnID:       txnID,
+		Transaction: txn,
+	})
+}
+
+type SyncProxyError struct {
+	appservice.Error
+	TxnID string `json:"txn_id"`
+}
+
+func putSyncProxyError(w http.ResponseWriter, r *http.Request) {
+	var txn appservice.Error
+	az := readTransaction(w, r, &txn)
+	if az == nil {
+		return
 	}
+	vars := mux.Vars(r)
+	txnID := vars["txnID"]
+	logContent := string(txn.ErrorCode)
+	txnName := fmt.Sprintf("syncproxy error %s", txnID)
+	writeTransaction(w, az, txnName, logContent, &appservice.WebsocketRequest{
+		Command: "syncproxy_error",
+		Data: &SyncProxyError{
+			Error: txn,
+			TxnID: txnID,
+		},
+	})
 }

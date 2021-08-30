@@ -34,6 +34,7 @@ func main() {
 	router := mux.NewRouter()
 	router.HandleFunc("/transactions/{txnID}", putTransaction).Methods(http.MethodPut)
 	router.HandleFunc("/_matrix/app/v1/transactions/{txnID}", putTransaction).Methods(http.MethodPut)
+	router.HandleFunc("/_matrix/app/unstable/fi.mau.syncproxy/error/{txnID}", putSyncProxyError).Methods(http.MethodPut)
 	router.HandleFunc("/_matrix/client/unstable/fi.mau.as_sync", syncWebsocket).Methods(http.MethodGet)
 	server := &http.Server{
 		Addr:    cfg.ListenAddress,
