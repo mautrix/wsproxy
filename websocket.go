@@ -72,7 +72,7 @@ func syncWebsocket(w http.ResponseWriter, r *http.Request) {
 			az.conn = nil
 			err := az.stopSyncProxy()
 			if err != nil {
-				log.Println("Error requesting websocket stop after", az.ID, "disconnected:", err)
+				log.Println("Error requesting syncproxy stop after", az.ID, "disconnected:", err)
 			}
 		}
 		az.connLock.Unlock()
