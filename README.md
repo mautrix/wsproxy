@@ -7,6 +7,8 @@ where the bridge runs. In general, you should run wsproxy in the same place as
 your homeserver and use your existing reverse proxy to secure the websocket
 connection between the bridge and wsproxy.
 
+![flowchart](./flowchart.png)
+
 ## Setup
 You can download a prebuilt executable from [the CI] or [GitHub releases]. The
 executables are statically compiled and have no dependencies. Alternatively,
