@@ -15,6 +15,7 @@ build:
   - mkdir -p .cache
   - export GOPATH="$CI_PROJECT_DIR/.cache"
   - export GOCACHE="$CI_PROJECT_DIR/.cache/build"
+  - export GOFLAGS="-buildvcs=false"
   script:
   - GOARCH=amd64 go build -o mautrix-wsproxy-amd64
   - GOARCH=arm64 go build -o mautrix-wsproxy-arm64
